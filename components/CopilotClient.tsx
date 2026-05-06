@@ -5,7 +5,7 @@ import { useState } from 'react';
 type CopilotFinding = {
   id: string;
   title: string;
-  severity: 'Critical' | 'High' | 'Medium' | 'Low' | 'Info';
+  severity: 'Critical' | 'High' | 'Medium' | 'Low' | 'Info' | 'Positive';
   category: string;
   file: string;
   line?: number;
@@ -32,7 +32,7 @@ type CopilotResult = {
 };
 
 export default function CopilotClient() {
-  const [repoUrl, setRepoUrl] = useState('https://github.com/vercel/next.js');
+  const [repoUrl, setRepoUrl] = useState('https://github.com/open-quantum-safe/liboqs');
   const [result, setResult] = useState<CopilotResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -74,12 +74,14 @@ export default function CopilotClient() {
           </div>
 
           <h2 className="mt-5 text-4xl font-semibold tracking-tight md:text-5xl">
-            Scan GitHub repos for risky crypto usage.
+            Scan GitHub repos for risky crypto and PQC maturity.
           </h2>
 
           <p className="mt-4 max-w-3xl text-zinc-400">
-            Detect RSA, ECDSA, ECDH, hardcoded keys, weak TLS settings,
-            weak JWT signing, old OpenSSL references, and missing PQC migration markers.
+            Detect RSA, ECDSA, ECDH, hardcoded keys, weak TLS settings, weak JWT
+            signing, old OpenSSL references, and real PQC migration signals such
+            as ML-KEM, ML-DSA, SLH-DSA, liboqs, oqs-provider, OpenSSL 3.5,
+            Cloudflare CIRCL, and X25519MLKEM768.
           </p>
         </div>
 
@@ -102,6 +104,24 @@ export default function CopilotClient() {
             </button>
           </div>
 
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              'https://github.com/open-quantum-safe/liboqs',
+              'https://github.com/open-quantum-safe/oqs-provider',
+              'https://github.com/cloudflare/circl',
+              'https://github.com/vercel/next.js',
+            ].map((url) => (
+              <button
+                key={url}
+                onClick={() => runScan(url)}
+                disabled={loading}
+                className="rounded-full border border-white/10 bg-black/30 px-3 py-2 text-xs text-zinc-300 hover:border-emerald-400/40 hover:bg-emerald-400/10 hover:text-emerald-200 disabled:opacity-60"
+              >
+                {url.replace('https://github.com/', '')}
+              </button>
+            ))}
+          </div>
+
           {error && (
             <div className="mt-3 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
               {error}
@@ -114,17 +134,54 @@ export default function CopilotClient() {
             <div className="grid gap-4 md:grid-cols-4">
               <Metric label="Repo" value={`${result.owner}/${result.repo}`} />
               <Metric label="Files scanned" value={String(result.filesScanned)} />
-              <Metric label="Copilot score" value={`${result.score}/100`} />
+              <Metric label="Risk score" value={`${result.score}/100`} />
               <Metric label="Risk" value={result.riskLevel} />
+              <Metric label="PQC maturity" value={`${result.pqcMaturityScore}/100`} />
+              <Metric label="Maturity level" value={result.pqcMaturityLevel} />
+              <Metric label="PQC signals" value={String(result.pqcSignalsFound)} />
+              <Metric label="Risky crypto" value={String(result.riskyCryptoFindings)} />
             </div>
 
             <div className="mt-6 rounded-3xl border border-white/10 bg-black/40 p-5">
-              <h3 className="text-xl font-semibold">Migration Summary</h3>
-              <p className="mt-3 text-sm leading-6 text-zinc-400">{result.summary}</p>
-              <p className="mt-2 text-xs text-zinc-500">
-                Branch scanned: {result.branch} · Scanned at:{' '}
-                {new Date(result.scannedAt).toLocaleString()}
-              </p>
+              <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                <div>
+                  <h3 className="text-xl font-semibold">Migration Summary</h3>
+                  <p className="mt-3 text-sm leading-6 text-zinc-400">
+                    {result.summary}
+                  </p>
+                  <p className="mt-2 text-xs text-zinc-500">
+                    Branch scanned: {result.branch} · Scanned at:{' '}
+                    {new Date(result.scannedAt).toLocaleString()}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
+                  PQC maturity: {result.pqcMaturityLevel}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-2">
+              <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                <h3 className="text-lg font-semibold">What this means</h3>
+                <p className="mt-3 text-sm leading-6 text-zinc-400">
+                  The risk score decreases when the scanner finds quantum-vulnerable
+                  classical cryptography, weak TLS settings, hardcoded secrets, or
+                  weak JWT patterns. The PQC maturity score increases when the repo
+                  contains signals such as ML-KEM, ML-DSA, SLH-DSA, liboqs,
+                  oqs-provider, OpenSSL 3.5, Cloudflare CIRCL, or hybrid TLS groups.
+                </p>
+              </div>
+
+              <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                <h3 className="text-lg font-semibold">Recommended next step</h3>
+                <p className="mt-3 text-sm leading-6 text-zinc-400">
+                  Use this as a migration discovery tool, not as proof that a repo is
+                  quantum-safe. Review the findings, create a crypto inventory, and
+                  validate production endpoints with the Website Scanner’s real Level
+                  3 PQC handshake test.
+                </p>
+              </div>
             </div>
 
             <div className="mt-6 space-y-4">
@@ -156,15 +213,22 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function FindingCard({ finding }: { finding: CopilotFinding }) {
   const severityClass =
-    finding.severity === 'Critical'
-      ? 'border-red-400/30 bg-red-400/10 text-red-200'
-      : finding.severity === 'High'
-        ? 'border-orange-400/30 bg-orange-400/10 text-orange-200'
-        : finding.severity === 'Medium'
-          ? 'border-yellow-400/30 bg-yellow-400/10 text-yellow-200'
-          : finding.severity === 'Low'
-            ? 'border-blue-400/30 bg-blue-400/10 text-blue-200'
-            : 'border-zinc-400/20 bg-zinc-400/10 text-zinc-200';
+    finding.severity === 'Positive'
+      ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
+      : finding.severity === 'Critical'
+        ? 'border-red-400/30 bg-red-400/10 text-red-200'
+        : finding.severity === 'High'
+          ? 'border-orange-400/30 bg-orange-400/10 text-orange-200'
+          : finding.severity === 'Medium'
+            ? 'border-yellow-400/30 bg-yellow-400/10 text-yellow-200'
+            : finding.severity === 'Low'
+              ? 'border-blue-400/30 bg-blue-400/10 text-blue-200'
+              : 'border-zinc-400/20 bg-zinc-400/10 text-zinc-200';
+
+  const recommendationTitle =
+    finding.severity === 'Positive'
+      ? 'How to validate this PQC signal'
+      : 'Recommended migration step';
 
   return (
     <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
@@ -186,11 +250,13 @@ function FindingCard({ finding }: { finding: CopilotFinding }) {
         {finding.evidence}
       </div>
 
-      <p className="mt-4 text-sm leading-6 text-zinc-400">{finding.explanation}</p>
+      <p className="mt-4 text-sm leading-6 text-zinc-400">
+        {finding.explanation}
+      </p>
 
       <div className="mt-4 rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.06] p-4">
         <div className="text-sm font-medium text-emerald-300">
-          Recommended migration step
+          {recommendationTitle}
         </div>
         <p className="mt-2 text-sm leading-6 text-zinc-300">
           {finding.recommendation}
