@@ -1,5 +1,6 @@
 'use client';
 
+import { PqcLevel3Card } from '@/components/PqcLevel3Card';
 import { useState } from 'react';
 import type { ScanResult } from '@/lib/types';
 import Icon from './Icon';
@@ -78,6 +79,7 @@ export default function ScannerClient({ initialResult }: { initialResult: ScanRe
                 <MiniMetric label="Risk" value={result.riskLevel} />
                 <MiniMetric label="TLS" value={result.tlsProtocol || 'Unknown'} />
                 <MiniMetric label="PQC signal" value={result.pqcDetected ? 'Detected' : 'Not detected'} />
+                <PqcLevel3Card pqc={result.pqc} />
               </div>
               {result.id && <a href={`/report/${result.id}`} className="mt-5 flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm text-zinc-200 hover:bg-white/10">Open saved report <Icon name="arrow" size={16} /></a>}
             </div>
