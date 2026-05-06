@@ -24,6 +24,10 @@ type CopilotResult = {
   findings: CopilotFinding[];
   score: number;
   riskLevel: 'Low' | 'Medium' | 'High' | 'Critical';
+  pqcMaturityScore: number;
+  pqcMaturityLevel: 'None' | 'Early' | 'Partial' | 'Advanced';
+  pqcSignalsFound: number;
+  riskyCryptoFindings: number;
   summary: string;
 };
 
