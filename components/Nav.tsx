@@ -15,33 +15,28 @@ export default function Nav() {
       </Link>
 
       <div className="hidden items-center gap-2 md:flex">
-        <Link
-          href="/"
-          className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-zinc-300 hover:bg-white/10 hover:text-white"
-        >
+        <Link href="/" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-zinc-300 hover:bg-white/10 hover:text-white">
+          Overview
+        </Link>
+
+        <Link href="/scanner" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-zinc-300 hover:bg-white/10 hover:text-white">
           Website Scanner
         </Link>
 
-        <Link
-          href="/copilot"
-          className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-zinc-300 hover:bg-white/10 hover:text-white"
-        >
+        <Link href="/copilot" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-zinc-300 hover:bg-white/10 hover:text-white">
           Developer Copilot
         </Link>
 
-        <Link
-          href="/vpn"
-          className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-zinc-300 hover:bg-white/10 hover:text-white"
-        >
+        <Link href="/vpn" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-zinc-300 hover:bg-white/10 hover:text-white">
           PQC VPN Proxy
         </Link>
       </div>
 
       <Link
-        href="/copilot"
+        href="/scanner"
         className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-400/20"
       >
-        Platform Demo
+        Start Scan
       </Link>
     </nav>
   );
