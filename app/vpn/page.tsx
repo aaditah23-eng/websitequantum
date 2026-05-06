@@ -15,13 +15,13 @@ export default function VpnPage() {
             </div>
 
             <h1 className="text-5xl font-semibold leading-[0.95] tracking-tight md:text-7xl">
-              A post-quantum tunnel for sensitive traffic.
+              A post-quantum tunnel for sensitive enterprise traffic.
             </h1>
 
             <p className="mt-7 max-w-2xl text-lg leading-8 text-zinc-400">
-              A future module for routing sensitive enterprise traffic through
-              a hybrid post-quantum secure proxy using ML-KEM-based key
-              establishment and modern TLS controls.
+              A future QuantumShield module for routing sensitive API, employee,
+              and partner traffic through a hybrid post-quantum secure proxy
+              using ML-KEM-based key establishment and modern TLS controls.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -43,13 +43,16 @@ export default function VpnPage() {
                   <span className="h-3 w-3 rounded-full bg-yellow-400" />
                   <span className="h-3 w-3 rounded-full bg-green-400" />
                 </div>
-                <div className="text-xs text-zinc-500">pqc-proxy.quantumshield.ai</div>
+                <div className="text-xs text-zinc-500">
+                  pqc-proxy.quantumshield.ai
+                </div>
               </div>
 
               <div className="space-y-4 font-mono text-sm">
                 <TerminalLine text="initializing secure tunnel..." good />
                 <TerminalLine text="client key exchange: X25519 + ML-KEM-768" good />
                 <TerminalLine text="tls policy: TLS 1.3 only" good />
+                <TerminalLine text="identity layer: device + user policy" good />
                 <TerminalLine text="classical fallback: disabled for sensitive routes" warning />
                 <TerminalLine text="traffic route: enterprise proxy edge" good />
               </div>
@@ -72,6 +75,72 @@ export default function VpnPage() {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative mx-auto max-w-7xl px-5 pb-24 md:px-8">
+        <div className="grid gap-5 lg:grid-cols-3">
+          <InfoCard
+            title="Why a PQC proxy matters"
+            text="Enterprises often cannot upgrade every internal application at once. A proxy layer can become a controlled migration point for sensitive routes, APIs, employee apps, and partner traffic."
+          />
+
+          <InfoCard
+            title="Hybrid security model"
+            text="A practical post-quantum transition combines classical algorithms such as X25519 with post-quantum key establishment such as ML-KEM-768. This reduces migration risk while preserving compatibility."
+          />
+
+          <InfoCard
+            title="Current status"
+            text="This module is currently a concept page. A real VPN or proxy requires a separate network service, authentication, traffic routing, logging, abuse controls, observability, and security review."
+          />
+        </div>
+      </section>
+
+      <section className="relative mx-auto max-w-7xl px-5 pb-24 md:px-8">
+        <div className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-6 backdrop-blur-xl md:p-8">
+          <div className="mb-8">
+            <div className="inline-flex rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-300">
+              Architecture Concept
+            </div>
+
+            <h2 className="mt-5 text-4xl font-semibold tracking-tight md:text-5xl">
+              How the VPN Proxy would work.
+            </h2>
+
+            <p className="mt-4 max-w-3xl text-zinc-400">
+              The proxy would sit between users, devices, APIs, and internal
+              systems. Instead of waiting for every backend service to become
+              post-quantum ready, sensitive routes can be protected and monitored
+              through a centralized crypto-agility layer.
+            </p>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-4">
+            <StepCard
+              number="01"
+              title="User connects"
+              text="A user, device, or service connects to the QuantumShield proxy using an authenticated policy-controlled tunnel."
+            />
+
+            <StepCard
+              number="02"
+              title="Hybrid key exchange"
+              text="The tunnel uses a hybrid design combining classical key exchange with ML-KEM-768 for post-quantum transition readiness."
+            />
+
+            <StepCard
+              number="03"
+              title="Policy routing"
+              text="Sensitive APIs and internal routes can be forced through strict TLS 1.3, identity, logging, and security policies."
+            />
+
+            <StepCard
+              number="04"
+              title="Migration bridge"
+              text="Legacy systems can be protected behind the proxy while teams gradually upgrade certificates, libraries, and services."
+            />
           </div>
         </div>
       </section>
@@ -109,6 +178,35 @@ function TerminalLine({
         }
       />
       <span className="text-zinc-400">$ {text}</span>
+    </div>
+  );
+}
+
+function InfoCard({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-6 backdrop-blur-xl">
+      <h3 className="text-xl font-semibold">{title}</h3>
+      <p className="mt-3 text-sm leading-6 text-zinc-400">{text}</p>
+    </div>
+  );
+}
+
+function StepCard({
+  number,
+  title,
+  text,
+}: {
+  number: string;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-black/40 p-5">
+      <div className="mb-5 inline-flex rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-300">
+        {number}
+      </div>
+      <h3 className="text-lg font-semibold">{title}</h3>
+      <p className="mt-3 text-sm leading-6 text-zinc-400">{text}</p>
     </div>
   );
 }
