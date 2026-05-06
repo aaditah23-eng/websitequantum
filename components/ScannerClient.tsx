@@ -48,24 +48,7 @@ export default function ScannerClient({ initialResult }: { initialResult: ScanRe
   return (
     <>
       <section className="relative px-5 py-8 md:px-8 md:py-10">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between rounded-3xl border border-white/10 bg-white/[0.035] px-5 py-4 backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
-              <Icon name="shield" size={21} />
-            </div>
-            <div>
-              <div className="font-semibold tracking-tight">QuantumShield</div>
-              <div className="text-xs text-zinc-500">Post-Quantum Readiness Scanner</div>
-            </div>
-          </div>
-
-          <a
-            href="#report"
-            className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-zinc-200 hover:bg-white/10"
-          >
-            View Report
-          </a>
-        </nav>
+       
 
         <div className="mx-auto grid max-w-7xl items-center gap-12 py-16 lg:grid-cols-[0.9fr_1.1fr] lg:py-24">
           <div>
