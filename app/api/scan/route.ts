@@ -13,19 +13,20 @@ export async function POST(req: NextRequest) {
 
     const pqc = await checkRealPqcLevel3(result.domain || body.domain || "");
 
+    const pqcPointsAwarded = pqc.pqcLevel3Supported ? 20 : 0;
+    const pqcMaxPoints = 20;
+
     const finalScore = Math.min(
       100,
       Number(result.score || 0) + Number(pqc.pqcScoreBoost || 0)
     );
 
-    let finalRiskLevel = result.riskLevel || "High";
+    let finalRiskLevel: "Low" | "Medium" | "High" = "High";
 
     if (finalScore >= 75) {
       finalRiskLevel = "Low";
     } else if (finalScore >= 50) {
       finalRiskLevel = "Medium";
-    } else {
-      finalRiskLevel = "High";
     }
 
     const finalResult = {
@@ -41,6 +42,8 @@ export async function POST(req: NextRequest) {
           description: pqc.pqcLevel3Supported
             ? "The domain negotiated a TLS 1.3 hybrid post-quantum key exchange using X25519MLKEM768 / ML-KEM-768."
             : "Level 3 PQC was not observed on this public HTTPS endpoint using X25519MLKEM768 / ML-KEM-768.",
+          pointsAwarded: pqcPointsAwarded,
+          maxPoints: pqcMaxPoints,
         },
       ],
       recommendations: [
