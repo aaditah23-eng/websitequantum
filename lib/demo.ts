@@ -18,8 +18,8 @@ export function makeDemoScan(domainInput: string): ScanResult {
     pqcGroupOffered: 'X25519MLKEM768',
     pqcAlgorithm: 'ML-KEM-768',
     nistSecurityCategory: 3,
-    opensslVersion: null,
-    pqcEvidence: null,
+    opensslVersion: undefined,
+    pqcEvidence: undefined,
   };
 
   const base = {
