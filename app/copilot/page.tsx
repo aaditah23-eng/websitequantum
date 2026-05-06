@@ -15,19 +15,46 @@ export default function CopilotPage() {
           </div>
 
           <h1 className="max-w-4xl text-5xl font-semibold leading-[0.95] tracking-tight md:text-7xl">
-            Scan codebases for quantum-vulnerable crypto.
+            Find quantum-vulnerable cryptography inside codebases.
           </h1>
 
           <p className="mt-7 max-w-3xl text-lg leading-8 text-zinc-400">
-            Upload or scan repositories for RSA, ECDSA, ECDH, hardcoded keys,
-            weak TLS settings, weak JWT signing, old OpenSSL references, and
-            missing PQC migration markers.
+            The Developer Copilot scans repositories for classical cryptography
+            that may require post-quantum migration, while also detecting early
+            PQC adoption signals such as ML-KEM, ML-DSA, SLH-DSA, liboqs,
+            oqs-provider, OpenSSL 3.5, and hybrid TLS groups.
           </p>
         </div>
       </section>
 
       <CopilotClient />
+
+      <section className="relative mx-auto max-w-7xl px-5 pb-24 md:px-8">
+        <div className="grid gap-5 lg:grid-cols-3">
+          <InfoCard
+            title="Why code scanning matters"
+            text="Most organizations do not know where RSA, ECDSA, ECDH, weak JWT signing, old TLS configurations, or hardcoded keys exist across their repositories."
+          />
+          <InfoCard
+            title="What PQC maturity means"
+            text="PQC maturity does not mean a repo is quantum-safe. It means the repo contains signs of migration planning, PQC libraries, PQC algorithms, or hybrid TLS configuration."
+          />
+          <InfoCard
+            title="Repo-to-runtime gap"
+            text="A repo may mention PQC, but the production endpoint may not negotiate PQC. Pair this page with the Website Scanner for live endpoint verification."
+          />
+        </div>
+      </section>
     </main>
+  );
+}
+
+function InfoCard({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-6 backdrop-blur-xl">
+      <h3 className="text-xl font-semibold">{title}</h3>
+      <p className="mt-3 text-sm leading-6 text-zinc-400">{text}</p>
+    </div>
   );
 }
 
