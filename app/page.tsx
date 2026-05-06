@@ -1,10 +1,16 @@
 import ScannerClient from '@/components/ScannerClient';
+import Nav from '@/components/Nav';
 import { makeDemoScan } from '@/lib/demo';
 
 export default function Home() {
   return (
     <main className="min-h-screen overflow-hidden bg-[#050505] text-white">
       <Background />
+
+      <section className="relative px-5 py-8 md:px-8 md:py-10">
+        <Nav />
+      </section>
+
       <ScannerClient initialResult={makeDemoScan('stripe.com')} />
     </main>
   );
