@@ -1,4 +1,4 @@
-export type CopilotSeverity = 'Critical' | 'High' | 'Medium' | 'Low' | 'Info';
+export type CopilotSeverity = 'Critical' | 'High' | 'Medium' | 'Low' | 'Info' | 'Positive';
 
 export type CopilotFinding = {
   id: string;
@@ -15,7 +15,11 @@ export type CopilotFinding = {
     | 'Crypto Library'
     | 'Dependency'
     | 'Certificate'
-    | 'PQC Migration';
+    | 'PQC Migration'
+    | 'PQC Library'
+    | 'PQC Algorithm'
+    | 'PQC TLS'
+    | 'Migration Maturity';
   file: string;
   line?: number;
   evidence: string;
@@ -33,6 +37,10 @@ export type CopilotResult = {
   findings: CopilotFinding[];
   score: number;
   riskLevel: 'Low' | 'Medium' | 'High' | 'Critical';
+  pqcMaturityScore: number;
+  pqcMaturityLevel: 'None' | 'Early' | 'Partial' | 'Advanced';
+  pqcSignalsFound: number;
+  riskyCryptoFindings: number;
   summary: string;
 };
 
@@ -46,8 +54,8 @@ type RepoFile = {
   content: string;
 };
 
-const MAX_FILES = 80;
-const MAX_FILE_SIZE = 120_000;
+const MAX_FILES = 100;
+const MAX_FILE_SIZE = 150_000;
 
 const TARGET_EXTENSIONS = [
   '.js',
@@ -76,6 +84,9 @@ const TARGET_EXTENSIONS = [
   '.pem',
   '.key',
   '.crt',
+  '.md',
+  '.txt',
+  '.lock',
 ];
 
 const TARGET_FILENAMES = [
@@ -89,16 +100,19 @@ const TARGET_FILENAMES = [
   'pom.xml',
   'build.gradle',
   'go.mod',
+  'go.sum',
   'cargo.toml',
+  'cargo.lock',
   'dockerfile',
   'docker-compose.yml',
   '.env',
   '.env.example',
   'nginx.conf',
   'openssl.cnf',
+  'readme.md',
 ];
 
-const RULES: Array<{
+const RISK_RULES: Array<{
   id: string;
   title: string;
   severity: CopilotSeverity;
@@ -117,7 +131,7 @@ const RULES: Array<{
     explanation:
       'RSA is vulnerable to future cryptographically relevant quantum computers through Shor’s algorithm. This usage should be inventoried and migrated where used for key exchange or signatures.',
     recommendation:
-      'Inventory this RSA usage. For new designs, plan migration toward NIST-standardized PQC such as ML-KEM for key establishment and ML-DSA or SLH-DSA for signatures.',
+      'Inventory this RSA usage. For new designs, plan migration toward ML-KEM for key establishment and ML-DSA or SLH-DSA for signatures.',
   },
   {
     id: 'ecdsa-detected',
@@ -128,7 +142,7 @@ const RULES: Array<{
     explanation:
       'ECDSA signatures rely on elliptic-curve discrete logarithms, which are not quantum-resistant.',
     recommendation:
-      'Track this usage as a signature migration candidate. Consider ML-DSA or SLH-DSA for future post-quantum signature designs.',
+      'Track this usage as a signature migration candidate. Consider ML-DSA or SLH-DSA for future post-quantum signatures.',
   },
   {
     id: 'ecdh-detected',
@@ -222,6 +236,138 @@ const RULES: Array<{
   },
 ];
 
+const PQC_RULES: Array<{
+  id: string;
+  title: string;
+  severity: CopilotSeverity;
+  category: CopilotFinding['category'];
+  regex: RegExp;
+  maturityPoints: number;
+  explanation: string;
+  recommendation: string;
+}> = [
+  {
+    id: 'ml-kem-detected',
+    title: 'ML-KEM usage or reference detected',
+    severity: 'Positive',
+    category: 'PQC Algorithm',
+    regex: /\b(ML-KEM|MLKEM|ML_KEM|Kyber|kyber768|kyber512|kyber1024)\b/i,
+    maturityPoints: 25,
+    explanation:
+      'ML-KEM is the NIST-standardized key encapsulation mechanism for post-quantum key establishment. This is a strong PQC migration signal.',
+    recommendation:
+      'Confirm whether ML-KEM is used in production, test, or documentation. Prioritize ML-KEM-768 for Level 3 migration where appropriate.',
+  },
+  {
+    id: 'ml-dsa-detected',
+    title: 'ML-DSA usage or reference detected',
+    severity: 'Positive',
+    category: 'PQC Algorithm',
+    regex: /\b(ML-DSA|MLDSA|ML_DSA|Dilithium|dilithium2|dilithium3|dilithium5)\b/i,
+    maturityPoints: 20,
+    explanation:
+      'ML-DSA is a NIST-standardized post-quantum digital signature algorithm. This indicates signature migration planning.',
+    recommendation:
+      'Map current ECDSA/RSA signing use cases and evaluate ML-DSA migration paths.',
+  },
+  {
+    id: 'slh-dsa-detected',
+    title: 'SLH-DSA usage or reference detected',
+    severity: 'Positive',
+    category: 'PQC Algorithm',
+    regex: /\b(SLH-DSA|SLHDSA|SLH_DSA|SPHINCS|SPHINCS\+)\b/i,
+    maturityPoints: 15,
+    explanation:
+      'SLH-DSA is a stateless hash-based post-quantum signature algorithm. This is a useful signal for conservative signature migration planning.',
+    recommendation:
+      'Use SLH-DSA where conservative hash-based signatures are preferred and performance tradeoffs are acceptable.',
+  },
+  {
+    id: 'x25519mlkem768-detected',
+    title: 'Hybrid TLS group X25519MLKEM768 detected',
+    severity: 'Positive',
+    category: 'PQC TLS',
+    regex: /\b(X25519MLKEM768|X25519MLKEM|X25519Kyber768Draft00|X25519Kyber768)\b/i,
+    maturityPoints: 30,
+    explanation:
+      'X25519MLKEM768 is a strong signal of hybrid post-quantum TLS migration using ML-KEM-768.',
+    recommendation:
+      'Validate this endpoint with the live Website Scanner and ensure coverage across production domains and APIs.',
+  },
+  {
+    id: 'liboqs-detected',
+    title: 'liboqs detected',
+    severity: 'Positive',
+    category: 'PQC Library',
+    regex: /\b(liboqs|open-quantum-safe|oqs)\b/i,
+    maturityPoints: 25,
+    explanation:
+      'liboqs is commonly used for experimenting with and integrating post-quantum cryptography.',
+    recommendation:
+      'Confirm whether liboqs usage is experimental or production-bound. Document supported algorithms and upgrade policy.',
+  },
+  {
+    id: 'oqs-provider-detected',
+    title: 'OpenSSL OQS provider detected',
+    severity: 'Positive',
+    category: 'PQC Library',
+    regex: /\b(oqs-provider|OpenSSL OQS Provider|provider=oqs|oqsprovider)\b/i,
+    maturityPoints: 25,
+    explanation:
+      'The OpenSSL OQS provider can expose post-quantum algorithms through OpenSSL-based workflows.',
+    recommendation:
+      'Validate provider configuration, supported algorithms, and compatibility with production TLS stacks.',
+  },
+  {
+    id: 'openssl-35-detected',
+    title: 'OpenSSL 3.5 or newer PQC-ready reference detected',
+    severity: 'Positive',
+    category: 'OpenSSL',
+    regex: /\b(OpenSSL\s+3\.[5-9]|openssl:3\.[5-9]|openssl@3\.[5-9])\b/i,
+    maturityPoints: 18,
+    explanation:
+      'OpenSSL 3.5+ references suggest readiness for newer cryptographic capabilities and PQC testing.',
+    recommendation:
+      'Verify actual supported groups and providers in deployment, not only dependency declarations.',
+  },
+  {
+    id: 'cloudflare-circl-detected',
+    title: 'Cloudflare CIRCL detected',
+    severity: 'Positive',
+    category: 'PQC Library',
+    regex: /\b(circl|github\.com\/cloudflare\/circl|cloudflare\/circl)\b/i,
+    maturityPoints: 20,
+    explanation:
+      'Cloudflare CIRCL includes cryptographic primitives and post-quantum experimentation support.',
+    recommendation:
+      'Review which CIRCL modules are used and whether they support the intended PQC migration goals.',
+  },
+  {
+    id: 'boringssl-pqc-detected',
+    title: 'BoringSSL PQC / hybrid group signal detected',
+    severity: 'Positive',
+    category: 'PQC TLS',
+    regex: /\b(BoringSSL|bssl|X25519MLKEM768|CECPQ2|CECPQ2b)\b/i,
+    maturityPoints: 15,
+    explanation:
+      'BoringSSL or historical hybrid PQC groups can indicate TLS experimentation or platform-level PQC readiness.',
+    recommendation:
+      'Confirm current production support and avoid relying on deprecated experimental group names.',
+  },
+  {
+    id: 'pqc-roadmap-detected',
+    title: 'PQC migration roadmap marker detected',
+    severity: 'Positive',
+    category: 'Migration Maturity',
+    regex: /\b(post-quantum|quantum-safe|quantum resistant|crypto-agility|crypto inventory|PQC migration|harvest now decrypt later)\b/i,
+    maturityPoints: 12,
+    explanation:
+      'Documentation or comments mention PQC migration concepts, which suggests early planning.',
+    recommendation:
+      'Turn roadmap language into concrete owners, assets, deadlines, and testable migration milestones.',
+  },
+];
+
 export function parseGitHubUrl(repoUrl: string): RepoRef {
   const cleaned = repoUrl.trim();
 
@@ -246,7 +392,6 @@ function shouldScanFile(path: string): boolean {
   const filename = lower.split('/').pop() || '';
 
   if (TARGET_FILENAMES.includes(filename)) return true;
-
   return TARGET_EXTENSIONS.some((ext) => lower.endsWith(ext));
 }
 
@@ -324,38 +469,55 @@ function lineNumberForMatch(content: string, index: number): number {
   return content.slice(0, index).split('\n').length;
 }
 
+function createFinding(
+  rule: {
+    id: string;
+    title: string;
+    severity: CopilotSeverity;
+    category: CopilotFinding['category'];
+    regex: RegExp;
+    explanation: string;
+    recommendation: string;
+  },
+  file: RepoFile,
+  match: RegExpMatchArray
+): CopilotFinding {
+  return {
+    id: `${rule.id}:${file.path}`,
+    title: rule.title,
+    severity: rule.severity,
+    category: rule.category,
+    file: file.path,
+    line: typeof match.index === 'number' ? lineNumberForMatch(file.content, match.index) : undefined,
+    evidence: match[0].slice(0, 180),
+    explanation: rule.explanation,
+    recommendation: rule.recommendation,
+  };
+}
+
 function scanFile(file: RepoFile): CopilotFinding[] {
   const findings: CopilotFinding[] = [];
 
-  for (const rule of RULES) {
+  for (const rule of RISK_RULES) {
     const match = file.content.match(rule.regex);
 
-    if (match && typeof match.index === 'number') {
-      findings.push({
-        id: `${rule.id}:${file.path}`,
-        title: rule.title,
-        severity: rule.severity,
-        category: rule.category,
-        file: file.path,
-        line: lineNumberForMatch(file.content, match.index),
-        evidence: match[0].slice(0, 180),
-        explanation: rule.explanation,
-        recommendation: rule.recommendation,
-      });
+    if (match) {
+      findings.push(createFinding(rule, file, match));
+    }
+  }
+
+  for (const rule of PQC_RULES) {
+    const match = file.content.match(rule.regex);
+
+    if (match) {
+      findings.push(createFinding(rule, file, match));
     }
   }
 
   return findings;
 }
 
-function hasPqcMarkers(files: RepoFile[]): boolean {
-  const pqcRegex =
-    /\b(post-quantum|pqc|ML-KEM|ML-DSA|SLH-DSA|Kyber|Dilithium|X25519MLKEM768)\b/i;
-
-  return files.some((file) => pqcRegex.test(file.content));
-}
-
-function calculateCopilotScore(findings: CopilotFinding[]) {
+function calculateRiskScore(findings: CopilotFinding[]) {
   let score = 100;
 
   for (const finding of findings) {
@@ -374,6 +536,30 @@ function calculateCopilotScore(findings: CopilotFinding[]) {
   else if (score < 80) riskLevel = 'Medium';
 
   return { score, riskLevel };
+}
+
+function calculatePqcMaturity(findings: CopilotFinding[]) {
+  let pqcMaturityScore = 0;
+
+  for (const finding of findings) {
+    const rule = PQC_RULES.find((item) => finding.id.startsWith(item.id));
+    if (rule) {
+      pqcMaturityScore += rule.maturityPoints;
+    }
+  }
+
+  pqcMaturityScore = Math.min(100, pqcMaturityScore);
+
+  let pqcMaturityLevel: CopilotResult['pqcMaturityLevel'] = 'None';
+
+  if (pqcMaturityScore >= 75) pqcMaturityLevel = 'Advanced';
+  else if (pqcMaturityScore >= 40) pqcMaturityLevel = 'Partial';
+  else if (pqcMaturityScore > 0) pqcMaturityLevel = 'Early';
+
+  return {
+    pqcMaturityScore,
+    pqcMaturityLevel,
+  };
 }
 
 export async function runCopilotScan(repoUrl: string): Promise<CopilotResult> {
@@ -397,23 +583,30 @@ export async function runCopilotScan(repoUrl: string): Promise<CopilotResult> {
   }
 
   const findings = files.flatMap(scanFile);
+  const riskFindings = findings.filter((finding) => finding.severity !== 'Positive');
+  const pqcFindings = findings.filter((finding) => finding.severity === 'Positive');
 
-  if (!hasPqcMarkers(files)) {
+  if (pqcFindings.length === 0) {
     findings.push({
       id: 'pqc-migration-marker:repo',
-      title: 'No PQC migration plan found in scanned files',
+      title: 'No PQC migration signals found in scanned files',
       severity: 'Info',
       category: 'PQC Migration',
       file: 'repository',
-      evidence: 'No PQC-related terms found',
+      evidence: 'No PQC libraries, algorithms, TLS groups, or roadmap markers found',
       explanation:
-        'The scanner did not find explicit post-quantum migration markers such as ML-KEM, ML-DSA, SLH-DSA, or X25519MLKEM768.',
+        'The scanner did not find explicit post-quantum migration signals such as ML-KEM, ML-DSA, SLH-DSA, X25519MLKEM768, liboqs, oqs-provider, OpenSSL 3.5, or Cloudflare CIRCL.',
       recommendation:
-        'Create a crypto inventory and migration plan covering RSA, ECC, TLS, certificates, JWT signing, and dependency updates.',
+        'Create a crypto inventory and migration plan covering RSA, ECC, TLS, certificates, JWT signing, dependency updates, and PQC library evaluation.',
     });
   }
 
-  const scored = calculateCopilotScore(findings);
+  const riskScored = calculateRiskScore(findings);
+  const maturity = calculatePqcMaturity(findings);
+  const finalPqcFindings = findings.filter((finding) => finding.severity === 'Positive');
+  const finalRiskFindings = findings.filter(
+    (finding) => finding.severity !== 'Positive' && finding.severity !== 'Info'
+  );
 
   return {
     repoUrl,
@@ -423,13 +616,19 @@ export async function runCopilotScan(repoUrl: string): Promise<CopilotResult> {
     scannedAt: new Date().toISOString(),
     filesScanned: files.length,
     findings,
-    score: scored.score,
-    riskLevel: scored.riskLevel,
+    score: riskScored.score,
+    riskLevel: riskScored.riskLevel,
+    pqcMaturityScore: maturity.pqcMaturityScore,
+    pqcMaturityLevel: maturity.pqcMaturityLevel,
+    pqcSignalsFound: finalPqcFindings.length,
+    riskyCryptoFindings: finalRiskFindings.length,
     summary:
       findings.length === 0
         ? 'No risky crypto patterns were found in the scanned files.'
-        : `${findings.length} crypto migration finding${
-            findings.length === 1 ? '' : 's'
+        : `${finalRiskFindings.length} risky crypto finding${
+            finalRiskFindings.length === 1 ? '' : 's'
+          } and ${finalPqcFindings.length} PQC migration signal${
+            finalPqcFindings.length === 1 ? '' : 's'
           } found across ${files.length} scanned files.`,
   };
 }
