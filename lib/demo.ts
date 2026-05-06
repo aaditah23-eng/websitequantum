@@ -4,6 +4,8 @@ import { buildRecommendations, buildRoadmap, scoreScan, cleanDomain } from './sc
 export function makeDemoScan(domainInput: string): ScanResult {
   const domain = cleanDomain(domainInput || 'example.com');
   const seed = domain.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  const demoPqcDetected = seed % 11 === 0;
+
   const base = {
     domain,
     scannedAt: new Date().toISOString(),
@@ -29,9 +31,33 @@ export function makeDemoScan(domainInput: string): ScanResult {
       hasDMARC: seed % 4 !== 0,
       mxRecords: [{ exchange: `mail.${domain}`, priority: 10 }],
     },
-    pqcDetected: seed % 11 === 0,
+
+    // Old/simple demo signal
+    pqcDetected: demoPqcDetected,
+
+    // New Level 3 PQC integration demo placeholder
+    pqc: {
+      pqcLevel3Tested: false,
+      pqcLevel3Supported: demoPqcDetected,
+      pqcStatus: demoPqcDetected
+        ? 'Demo mode — Level 3 PQC signal shown'
+        : 'Demo mode — run a live scan to test real Level 3 PQC',
+      pqcRisk: demoPqcDetected ? 'Low' : 'Unknown',
+      pqcScoreBoost: demoPqcDetected ? 30 : 0,
+      pqcGroupOffered: 'X25519MLKEM768',
+      pqcAlgorithm: 'ML-KEM-768',
+      nistSecurityCategory: 3,
+      opensslVersion: null,
+      pqcEvidence: null,
+    },
   };
+
   const scored = scoreScan(base);
   const almost = { ...base, ...scored };
-  return { ...almost, recommendations: buildRecommendations(almost), roadmap: buildRoadmap() };
+
+  return {
+    ...almost,
+    recommendations: buildRecommendations(almost),
+    roadmap: buildRoadmap(),
+  };
 }
