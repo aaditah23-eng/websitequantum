@@ -1,3 +1,4 @@
+import { checkRealPqcLevel3 } from "@/lib/pqc-level3";
 import { NextRequest, NextResponse } from 'next/server';
 import { runDomainScan } from '@/lib/scan';
 import { saveScan } from '@/lib/db';
