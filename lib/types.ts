@@ -2,7 +2,7 @@ export type CheckStatus = 'pass' | 'warning' | 'fail' | 'info';
 
 export type ScanCheck = {
   name: string;
-  status: CheckStatus;
+  status: "pass" | "warning" | "fail";
   description: string;
   pointsAwarded: number;
   maxPoints: number;
