@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { runDomainScan } from "@/lib/scan";
 import { saveScan } from "@/lib/db";
 import { checkRealPqcLevel3 } from "@/lib/pqc-level3";
-import type { ScanCheck } from "@/lib/types";
+import type { ScanCheck, ScanResult } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -37,11 +37,10 @@ export async function POST(req: NextRequest) {
       finalRiskLevel = "Medium";
     }
 
-    const finalResult = {
+    const finalResult: ScanResult = {
       ...result,
       score: finalScore,
       riskLevel: finalRiskLevel,
-      pqc,
       pqcDetected: pqc.pqcLevel3Supported,
       checks: [...(result.checks || []), pqcCheck],
       recommendations: [
@@ -52,10 +51,14 @@ export async function POST(req: NextRequest) {
       ],
     };
 
-    const id = await saveScan(finalResult);
+    const id = await saveScan({
+      ...finalResult,
+      pqc,
+    } as ScanResult);
 
     return NextResponse.json({
       ...finalResult,
+      pqc,
       id: id || undefined,
       saved: Boolean(id),
     });
